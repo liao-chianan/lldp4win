@@ -157,7 +157,7 @@ func installService(args []string) error {
 
 	s, err := m.CreateService(serviceName, exe, mgr.Config{
 		DisplayName: "lldp4win (LLDP for Windows)",
-		Description: "定期在各網卡送出 LLDP 封包，讓交換器可辨識此電腦。",
+		Description: "定期在各網卡送出 LLDP 封包，讓交換器可辨識此電腦。 " + projectURL,
 		StartType:   mgr.StartAutomatic,
 	}, args...)
 	if err != nil {

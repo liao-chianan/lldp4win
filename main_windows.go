@@ -19,7 +19,10 @@ import (
 // version 會在建置時以 -ldflags "-X main.version=v1.0.0" 覆寫。
 var version = "dev"
 
-const serviceName = "lldp4win"
+const (
+	serviceName = "lldp4win"
+	projectURL  = "https://github.com/liao-chianan/lldp4win"
+)
 
 type Config struct {
 	Hostname   string
