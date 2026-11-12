@@ -104,6 +104,18 @@ func TestMinimumFrameAndNoMED(t *testing.T) {
 	}
 }
 
+func TestPortIDText(t *testing.T) {
+	f := Frame{SrcMAC: net.HardwareAddr{2, 0, 0, 0, 0, 1}, ChassisID: "pc", PortID: "192.168.1.45", TTL: 120}
+	b, err := f.Build()
+	if err != nil {
+		t.Fatal(err)
+	}
+	tl := parseTLVs(t, b)[1]
+	if tl.typ != tlvPortID || tl.value[0] != portSubtypeLocal || string(tl.value[1:]) != "192.168.1.45" {
+		t.Errorf("port id = %d % x", tl.typ, tl.value)
+	}
+}
+
 func TestShortOSName(t *testing.T) {
 	cases := []struct {
 		product, release string

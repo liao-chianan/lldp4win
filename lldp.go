@@ -26,6 +26,7 @@ const (
 
 	chassisSubtypeLocal = 7
 	portSubtypeMAC      = 3
+	portSubtypeLocal    = 7
 
 	mgmtAddrFamilyIPv4 = 1
 	mgmtAddrFamilyIPv6 = 2
@@ -40,6 +41,7 @@ const (
 type Frame struct {
 	SrcMAC     net.HardwareAddr
 	ChassisID  string // 主機 DNS 名稱
+	PortID     string // 空字串 = 使用 MAC（subtype 3）；否則以文字送出（subtype 7）
 	PortDesc   string // 網卡描述
 	SystemName string
 	SystemDesc string // 作業系統描述
@@ -95,7 +97,11 @@ func (f *Frame) Build() ([]byte, error) {
 
 	// 必要 TLV：Chassis ID / Port ID / TTL
 	w.tlv(tlvChassisID, append([]byte{chassisSubtypeLocal}, truncate(f.ChassisID, 255)...))
-	w.tlv(tlvPortID, append([]byte{portSubtypeMAC}, f.SrcMAC...))
+	if f.PortID != "" {
+		w.tlv(tlvPortID, append([]byte{portSubtypeLocal}, truncate(f.PortID, 255)...))
+	} else {
+		w.tlv(tlvPortID, append([]byte{portSubtypeMAC}, f.SrcMAC...))
+	}
 	w.tlv(tlvTTL, binary.BigEndian.AppendUint16(nil, f.TTL))
 
 	// 選用 TLV

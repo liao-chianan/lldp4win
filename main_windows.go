@@ -34,6 +34,41 @@ type Config struct {
 	Verbose    bool
 
 	IncludeVirtual bool
+	PortIDMode     string // ip-mac（預設）| ip | mac | name
+}
+
+func portIDText(c *Config, a *Adapter) string {
+	if p := c.portID(a); p != "" {
+		return p
+	}
+	return a.MAC.String() + "（MAC）"
+}
+
+// portID 依 -portid 產生 Port ID 文字；回傳空字串表示使用 MAC。
+// LibreNMS 等網管系統的「Remote Port」顯示的就是這個欄位。
+func (c *Config) portID(a *Adapter) string {
+	switch c.PortIDMode {
+	case "mac":
+		return ""
+	case "name":
+		return a.Friendly
+	case "ip-mac":
+		if a.IPv4 != nil {
+			return fmt.Sprintf("%s (%s)", a.IPv4, a.MAC)
+		}
+		if a.IPv6 != nil {
+			return fmt.Sprintf("%s (%s)", a.IPv6, a.MAC)
+		}
+		return "" // 沒有 IP 時退回 MAC
+	default: // "ip"
+		if a.IPv4 != nil {
+			return a.IPv4.String()
+		}
+		if a.IPv6 != nil {
+			return a.IPv6.String()
+		}
+		return "" // 沒有 IP 時退回 MAC
+	}
 }
 
 func usage(fs *flag.FlagSet) {
@@ -64,6 +99,7 @@ func parseFlags(args []string) (*Config, *flag.FlagSet, bool) {
 	fs.StringVar(&interval, "interval", "30s", "送出間隔，例如 30s、1m")
 	fs.IntVar(&cfg.TTL, "ttl", 120, "LLDP TTL（秒）")
 	fs.StringVar(&ifaces, "i", "", "只在符合的網卡送出，逗號分隔；比對名稱/描述/GUID（不分大小寫）")
+	fs.StringVar(&cfg.PortIDMode, "portid", "ip-mac", "Port ID 內容（網管的 Remote Port）：ip | ip-mac | mac | name")
 	fs.BoolVar(&cfg.IncludeVirtual, "include-virtual", false, "也在虛擬網卡（Hyper-V、VMware、VPN…）送出；預設略過")
 	fs.BoolVar(&cfg.NoMED, "no-med", false, "不送出 IEEE 802.3 / LLDP-MED 擴充 TLV")
 	fs.BoolVar(&cfg.Verbose, "v", false, "顯示封包十六進位內容")
@@ -85,6 +121,12 @@ func parseFlags(args []string) (*Config, *flag.FlagSet, bool) {
 		log.Fatal("-ttl 必須在 1..65535")
 	}
 	cfg.Interval = d
+	cfg.PortIDMode = strings.ToLower(cfg.PortIDMode)
+	switch cfg.PortIDMode {
+	case "ip", "ip-mac", "mac", "name":
+	default:
+		log.Fatalf("無效的 -portid %q（可用 ip、ip-mac、mac、name）", cfg.PortIDMode)
+	}
 	for _, s := range strings.Split(ifaces, ",") {
 		if s = strings.TrimSpace(s); s != "" {
 			cfg.Interfaces = append(cfg.Interfaces, strings.ToLower(s))
@@ -222,8 +264,8 @@ func listAdapters(cfg *Config) error {
 		} else {
 			status = "略過（不符合 -i）"
 		}
-		fmt.Printf("\n[%s] %s\n  狀態:   %s\n  GUID:   %s\n  MAC:    %s\n  IPv4:   %v\n  IPv6:   %v\n  ifIndex:%d\n  Name:   %s\n",
-			a.Friendly, a.Description, status, a.Name, a.MAC, a.IPv4, a.IPv6, a.IfIndex, cfg.systemName(a))
+		fmt.Printf("\n[%s] %s\n  狀態:   %s\n  GUID:   %s\n  MAC:    %s\n  IPv4:   %v\n  IPv6:   %v\n  ifIndex:%d\n  Name:   %s\n  PortID: %s\n",
+			a.Friendly, a.Description, status, a.Name, a.MAC, a.IPv4, a.IPv6, a.IfIndex, cfg.systemName(a), portIDText(cfg, a))
 	}
 	if n == 0 {
 		fmt.Println("\n沒有符合條件且已連線的乙太網路/Wi-Fi 網卡")
@@ -259,6 +301,7 @@ func sendAll(cfg *Config, lg *log.Logger, verbose bool) (int, string) {
 		f := Frame{
 			SrcMAC:     a.MAC,
 			ChassisID:  name,
+			PortID:     cfg.portID(a),
 			PortDesc:   a.Description,
 			SystemName: name,
 			SystemDesc: desc,

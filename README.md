@@ -31,6 +31,7 @@ lldp4win version             顯示版本
 |---|---|---|
 | `-h <name>` / `-hostname` | System Name / Chassis ID | 主機名稱 + 網卡 DNS 尾碼（或網域） |
 | `-s <desc>` / `-sysdesc` | System Description | 自動偵測，如 `Windows 11 25H2 x64`、`Windows Server 2022 21H2 x64` |
+| `-portid <mode>` | Port ID 內容，也就是 LibreNMS 等網管顯示的 **Remote Port**：`ip-mac`（`192.168.1.45 (fc:34:97:9f:c0:4a)`）、`ip`（只有 IP）、`mac`（原版行為）、`name`（網卡名稱）；IPv4 優先，無則 IPv6，都沒有時退回 MAC | `ip-mac` |
 | `-interval <d>` | 送出間隔 | `30s` |
 | `-ttl <sec>` | LLDP TTL | `120` |
 | `-i <filter>` | 只在符合的網卡送出（逗號分隔，比對名稱/描述/GUID）；明確指定時虛擬網卡也會送 | 全部實體網卡 |
@@ -81,7 +82,7 @@ lldp4win remove             :: 停止並移除
 | TLV | 內容 |
 |---|---|
 | Chassis ID | subtype 7 (locally assigned)：系統名稱 |
-| Port ID | subtype 3 (MAC address) |
+| Port ID | 預設 subtype 7 (locally assigned)：`IP (MAC)`，例如 `192.168.1.45 (fc:34:97:9f:c0:4a)`；`-portid mac` 時為 subtype 3 (MAC address) |
 | TTL | 120 秒（可調） |
 | Port Description | 網卡描述 |
 | System Name | 主機名稱（含 DNS 尾碼） |
